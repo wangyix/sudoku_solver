@@ -60,29 +60,6 @@ int main(void)
     }
     B = getTickCount();
     cout << "binarize: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-    
-
-
-
-
-    /*// dilate image to cover up small holes
-    A = getTickCount();
-    Mat dilate_SE;
-    {
-        int SE_radius = max((int)((1.0 / 256.0) * IM_SQRT_RES), 1);
-        int SE_size = SE_radius * 2 + 1;
-        cout << "dilate SE size " << SE_size << endl;
-        dilate_SE = Mat::zeros(SE_size, SE_size, CV_8U);
-        for (int y = 0; y < SE_size; y++) 
-            dilate_SE.ptr(y)[SE_radius] = 1;
-        uchar* row = dilate_SE.ptr(SE_radius);
-        for (int x = 0; x < SE_size; x++)
-            row[x] = 1;
-        dilate(im_bin, im_bin, dilate_SE);
-    }
-    B = getTickCount();
-    cout << "dilate: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-    */
 
     namedWindow("thesholded image", WINDOW_AUTOSIZE);
     imshow("thesholded image", im_bin);
@@ -111,14 +88,32 @@ int main(void)
         floodFill(im_binblob, maxAreaPoint, Scalar(255));
         threshold(im_binblob, im_binblob, 254, 255, CV_THRESH_BINARY);
     }
+    /*{
+        vector<vector<Point>> contours;
+        findContours(im_binblob, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
+        
+        // find largest blob
+        int maxArea = 0;
+        int maxIndex = -1;
+        for (int i = 0; i < contours.size(); i++) {
+            int area = contours[i].size();
+            if (area > maxArea) {
+                maxArea = area;
+                maxIndex = i;
+            }
+        }
+
+        im_binblob = Mat::zeros(im_binblob.size(), im_binblob.type());
+        drawContours(im_binblob, contours, maxIndex, Scalar(255));
+    }*/
     B = getTickCount();
     cout << "find max blob: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
 
-    //namedWindow("max blob", WINDOW_AUTOSIZE);
-    //imshow("max blob", im_binblob);
+    namedWindow("max blob", WINDOW_AUTOSIZE);
+    imshow("max blob", im_binblob);
 
 
-
+    
     
     // find the contour of the grid
     A = getTickCount();
@@ -151,142 +146,10 @@ int main(void)
 
     //namedWindow("manual contour", CV_WINDOW_AUTOSIZE);
     //imshow("manual contour", im_edge);
-    
-
-    /*
-    // find lines in the grid
-    
-    A = getTickCount();
-    vector<Vec2f> lines;
-    {
-        double rho = (1.0 / 512.0) * IM_SQRT_RES;   //1;
-        double theta = 1.0 * (CV_PI / 180.0);
-        int threshold = (int)(IM_SQRT_RES / 5.0);//100;
-        HoughLines(im_edge, lines, rho, theta, threshold, 0, 0);
-    }
-    B = getTickCount();
-    cout << "find lines: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-
-    // draw lines
-    Mat im_lines;
-    im.copyTo(im_lines);
-    for (size_t i = 0; i < lines.size(); i++)
-    {
-        float rho = lines[i][0], theta = lines[i][1];
-        Point pt1, pt2;
-        double a = cos(theta), b = sin(theta);
-        double x0 = a*rho, y0 = b*rho;
-        pt1.x = cvRound(x0 + 1000 * (-b));
-        pt1.y = cvRound(y0 + 1000 * (a));
-        pt2.x = cvRound(x0 - 1000 * (-b));
-        pt2.y = cvRound(y0 - 1000 * (a));
-        line(im_lines, pt1, pt2, Scalar(0, 255, 0), 1, CV_AA);
-    }
-
-    namedWindow("detected lines", WINDOW_AUTOSIZE);
-    imshow("detected lines", im_lines);
-    */
-    /*
-    A = getTickCount();
-    vector<Vec4i> lines;
-    double rho = (1.0 / 512.0) * IM_SQRT_RES;
-    double theta = 1.0 * (CV_PI / 180.0);
-    int threshold = 100;
-    HoughLinesP(im_edge, lines, rho, theta, threshold);
-    B = getTickCount();
-    cout << "find lines: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-
-    Mat im_lines;
-    im.copyTo(im_lines);
-    for (size_t i = 0; i < lines.size(); i++) {
-    Vec4i l = lines[i];
-    line(im_lines, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0, 0, 255), 3, CV_AA);
-    }
-    namedWindow("detected lines", WINDOW_AUTOSIZE);
-    imshow("detected lines", im_lines);
-    */
-
-
-    //if (lines.size() < 20)
-    //    return -1;
-
 
     // find the four corners of the grid
     A = getTickCount();
     vector<Point2f> corners(4);
-    /*{
-        // change thetas from [0,pi) to [pi/4,5pi/4)
-        // also find the max and min theta values
-        float minTheta = 100.0;
-        float maxTheta = -100.0;
-        for (int i = 0; i < lines.size(); i++){
-        float rho = lines[i][0];
-        float theta = lines[i][1];
-        if (theta < CV_PI / 4.0) {
-        theta += CV_PI;
-        rho = -rho;
-        lines[i][0] = rho;
-        lines[i][1] = theta;
-        }
-        if (theta < minTheta)
-        minTheta = theta;
-        if (theta > maxTheta)
-        maxTheta = theta;
-        }
-        // partition the thetas with the avg of the min and max as the threshold
-        vector<bool> thetaAbove(lines.size());
-        float threshold = 0.5f * (minTheta + maxTheta);
-        for (int i = 0; i < lines.size(); i++) {
-        thetaAbove[i] = (lines[i][1] >= threshold);
-        }
-        // for each partition, find the lines with the min and max rhos
-        float lowThetaMinRho = INFINITY;
-        float lowThetaMaxRho = -INFINITY;
-        int lowThetaMinMaxIndices[2];   // index 0 is min, 1 is max
-        float highThetaMinRho = INFINITY;
-        float highThetaMaxRho = -INFINITY;
-        int highThetaMinMaxIndices[2];  // index 0 is min, 1 is max
-        for (int i = 0; i < lines.size(); i++) {
-        float rho = lines[i][0];
-        if (!thetaAbove[i]) {
-        if (rho < lowThetaMinRho) {
-        lowThetaMinRho = rho;
-        lowThetaMinMaxIndices[0] = i;
-        }
-        if (rho > lowThetaMaxRho) {
-        lowThetaMaxRho = rho;
-        lowThetaMinMaxIndices[1] = i;
-        }
-        } else {
-        if (rho < highThetaMinRho) {
-        highThetaMinRho = rho;
-        highThetaMinMaxIndices[0] = i;
-        }
-        if (rho > highThetaMaxRho) {
-        highThetaMaxRho = rho;
-        highThetaMinMaxIndices[1] = i;
-        }
-        }
-        }
-        // find intersections for the following pairs of lines:
-        // lowMin-highMin, lowMin-highMax, lowMax-highMin, lowMax-highMax
-        for (int i = 0; i < 2; i++) {
-        for (int j = 0; j < 2; j++) {
-        Vec2f& line1 = lines[lowThetaMinMaxIndices[i]];
-        Vec2f& line2 = lines[highThetaMinMaxIndices[j]];
-        float rho1 = line1[0], theta1 = line1[1];
-        float rho2 = line2[0], theta2 = line2[1];
-        // solve Ax=b for x, the intersection point
-        float a = cosf(theta1), b = sinf(theta1);
-        float c = cosf(theta2), d = sinf(theta2);
-        float inv_det = 1.0f / (a*d - b*c);
-        float x = inv_det*(d*rho1 - b*rho2);
-        float y = inv_det*(a*rho2 - c*rho1);
-        corners[2 * i + j] = Point(x, y);
-        }
-        }
-
-        }*/
     {
         // corners are, in order:
         // min projection onto <1,1>  (top left)    minSum
@@ -359,38 +222,7 @@ int main(void)
     cout << "homography transform: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
     
     namedWindow("grid", CV_WINDOW_AUTOSIZE);
-    imshow("grid", im_grid);
-
-    // erode lines??
-    /*{
-        int SE_length = ((int)((GRID_DIM / 9.0) * 0.5)) * 2 + 1;
-        Mat SE = Mat::ones(1, SE_length, CV_8U);
-        erode(im_grid, im_grid, SE);
-    }*/
-
-    /*// draw ideal 9x9 grid lines for visualization purposes
-    Mat im_grid_with_lines;
-    cvtColor(im_grid, im_grid_with_lines, CV_GRAY2RGB);
-    for (int i = 1; i < 9; i++) {
-        int d = round(GRID_DIM / 9.0 * i);
-        Point pt1(0, d);
-        Point pt2(GRID_DIM - 1, d);
-        line(im_grid_with_lines, pt1, pt2, Scalar(0, 255, 0), 1, CV_AA);
-        Point pt3(d, 0);
-        Point pt4(d, GRID_DIM - 1);
-        line(im_grid_with_lines, pt3, pt4, Scalar(0, 255, 0), 1, CV_AA);
-    }
-    namedWindow("grid", CV_WINDOW_AUTOSIZE);
-    imshow("grid", im_grid_with_lines);
-    */
-
-    //imwrite("../grid.png", im_grid);
-    
-
-
-
-
-    
+    imshow("grid", im_grid); 
 
 
     // find best center of each grid cell with two-bar template matching
@@ -413,13 +245,6 @@ int main(void)
                 row[x] = 1;
             dilate(im_grid, im_grid_thick, dilate_SE);
         }
-
-        // pad grid image
-        //const int GRID_PAD = 30;
-        //const int GRID_DIM_PAD = GRID_DIM + 2 * GRID_PAD;
-        //Mat im_grid_border;
-        //copyMakeBorder(im_grid_thick, im_grid_border, GRID_PAD, GRID_PAD, GRID_PAD, GRID_PAD,
-        //    BORDER_CONSTANT, Scalar(0));
 
         const int CELL_HALF_DIM = (CELL_DIM - 1) / 2;
         const int BAR_HALF_THICKNESS = 2;
@@ -515,6 +340,67 @@ int main(void)
     }
     namedWindow("cell centers", CV_WINDOW_AUTOSIZE);
     imshow("cell centers", im_cell_centers);
+
+
+
+
+    // extract numbers from grid
+    vector<Mat> numbers_bin(cellCenters.size());
+    
+    const int CELLRECT_HALF_DIM = 20;
+    const int CELLRECT_DIM = 2 * CELLRECT_HALF_DIM + 1;
+    const int CELLRECT_PIXELS = CELLRECT_DIM * CELLRECT_DIM;
+    const int NUMRECT_DIM = 50;
+
+    Point2i cellRectMin(-CELLRECT_HALF_DIM, -CELLRECT_HALF_DIM);
+    Point2i cellRectMax(CELLRECT_HALF_DIM + 1, CELLRECT_HALF_DIM + 1);
+    Rect cellRect(cellRectMin, cellRectMax);
+    for (int i = 0; i < cellCenters.size(); i++) {
+        // crop out a square around the cell center to get the number
+        Mat im_num = im_grid(cellRect + cellCenters[i]);
+
+        // if square has too few white pixels, it's assumed blank
+        if (countNonZero(im_num) < CELLRECT_PIXELS / 16) {
+            continue;
+        }
+        
+        // morphological close ????
+
+        // find bounds of largest blob in the square
+        int maxArea = 0;
+        Point maxBlobPoint;
+        for (int y = 0; y < CELLRECT_DIM; y++) {
+            uchar *row = im_num.ptr(y);
+            for (int x = 0; x < CELLRECT_DIM; x++) {
+                if (row[x] > 128) {
+                    int area = floodFill(im_num, Point(x, y), Scalar(128));
+                    if (area > maxArea) {
+                        maxArea = area;
+                        maxBlobPoint = Point(x, y);
+                    }
+                }
+            }
+        }
+        Rect blobRect;
+        floodFill(im_num, maxBlobPoint, Scalar(255), &blobRect);
+        threshold(im_num, im_num, 254, 255, CV_THRESH_BINARY);
+
+        // extract largest blob square bounding box and scale to a fixed size
+        int widthDiff = CELLRECT_DIM - blobRect.height;
+        Point2i topLeft(widthDiff / 2, blobRect.tl().y);
+        Point2i bottomRight(topLeft.x + blobRect.height, blobRect.br().y);
+
+        Mat im_num_cropped_scaled;
+        resize(im_num(Rect(topLeft, bottomRight)), im_num_cropped_scaled, Size(NUMRECT_DIM, NUMRECT_DIM));
+
+        numbers_bin[i] = im_num_cropped_scaled;
+    }
+    
+    namedWindow("cell", CV_WINDOW_AUTOSIZE);
+    imshow("cell", numbers_bin[36]);
+
+
+
 
 
 
