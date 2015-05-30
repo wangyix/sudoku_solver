@@ -1,4 +1,8 @@
-//#include <jni.h>
+#define TESTING 1
+
+#if TESTING == 0
+#include <jni.h>
+#endif
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -9,10 +13,6 @@
 using namespace std;
 using namespace cv;
 
-/*extern "C" {
-    JNIEXPORT void JNICALL Java_org_opencv_samples_tutorial2_Tuturial2Activity_FindFeatures(JNIEnv*, jobject, jlong addrGray, jlong addrRgba);
-
-    JNIEXPORT void JNICALL Java_org_opencv_samples_tutorial2_Tutorial2Activity_FindFeatures(JNIEnv*, jobject, jlong addrGray, jlong addrRgba)*/
 
 Point2i twoRectsMatch(const Mat& integral,
     const Point2i& r1_min, const Point2i& r1_max,
@@ -21,10 +21,44 @@ Point2i twoRectsMatch(const Mat& integral,
     const Point2i& s2_min, const Point2i& s2_max,
     const Point2i& center_min, const Point2i& center_max);
 
+
+#if TESTING == 0
+extern "C" {
+JNIEXPORT void JNICALL Java_org_opencv_samples_tutorial2_Tuturial2Activity_FindFeatures(JNIEnv*, jobject, jlong addrIm, jlong addrImOut);
+
+JNIEXPORT void JNICALL Java_org_opencv_samples_tutorial2_Tutorial2Activity_FindFeatures(JNIEnv*, jobject, jlong addrIm, jlong addrImOut)
+{
+
+#else
 int main(void)
 {
+{
+
+#endif
+
+#if TESTING == 0
+    Mat& im = *(Mat*)addrIm;
+    Mat& im_output = *(Mat*)addrImOut;
+#else
+    Mat im;
+    Mat im_output;
+#endif
+
+    Mat im_orig = im;
+
     const int NUMRECT_DIM = 20;
     const int NUMRECT_PIX = NUMRECT_DIM * NUMRECT_DIM;
+
+
+    const int FONT_FACE = FONT_HERSHEY_SIMPLEX;
+    const double FONT_SCALE = 1.2;
+    const int FONT_THICKNESS = 2;
+
+    // PREPROCESS ========================================================================================
+
+    
+    // templates for number recognition
+    vector<Mat> templates(9);
 
     float T[9][400] = { { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.0043287, -0.0055228, -0.0038944, -0.00043422, -0.0024425, -0.0043287, -0.0035416, -0.0034602, -0.0034602, -0.0021575, -0.00099057, -0.0077889, -0.022362, -0.028808, -0.028713, -0.0157, -0.0062691, -0.00032567, -0.00012212, 0, -0.011029, -0.029864, -0.042384, -0.067562, -0.10511, -0.13134, -0.13012, -0.097985, -0.096927, -0.090427, -0.094633, -0.1388, -0.20486, -0.24654, -0.29047, -0.21478, -0.13814, -0.081542, -0.062125, -0.038962, -0.05916, -0.093218, -0.20059, -0.326, -0.41873, -0.46013, -0.41361, -0.32789, -0.27451, -0.28257, -0.33633, -0.31036, -0.32644, -0.3883, -0.50291, -0.4795, -0.44476, -0.31278, -0.16635, -0.056761, -0.12496, -0.27861, -0.50918, -0.55974, -0.51921, -0.52024, -0.53634, -0.44838, -0.42474, -0.4422, -0.48754, -0.39889, -0.35567, -0.41456, -0.55386, -0.57334, -0.56469, -0.51289, -0.31195, -0.091061, -0.23731, -0.49279, -0.44216, -0.31067, -0.17642, -0.049736, -0.17635, -0.39329, -0.51496, -0.51482, -0.48238, -0.39361, -0.35359, -0.38608, -0.48014, -0.55143, -0.5594, -0.53041, -0.44695, -0.18219, -0.35868, -0.49311, -0.39372, -0.085281, 0.26203, 0.29566, 0.020594, -0.36685, -0.48703, -0.46939, -0.38283, -0.28607, -0.31693, -0.33419, -0.3524, -0.35427, -0.43869, -0.51801, -0.49913, -0.30024, -0.47941, -0.46919, -0.28497, 0.31001, 0.65667, 0.60065, 0.26273, -0.14743, -0.26244, -0.21646, -0.14439, -0.088115, -0.14243, -0.14512, -0.13764, -0.070698, -0.13248, -0.34452, -0.47147, -0.40899, -0.46204, -0.45665, -0.11226, 0.55162, 0.74335, 0.70168, 0.29571, -0.0045299, -0.1944, -0.14171, -0.070006, -0.020114, -0.041434, -0.03598, 0.031053, 0.14979, 0.12241, -0.15526, -0.33724, -0.348, -0.33629, -0.29111, 0.096365, 0.55665, 0.77142, 0.69945, 0.4287, 0.25861, 0.029887, 0.052338, 0.15831, 0.2336, 0.25305, 0.31023, 0.36385, 0.46374, 0.36105, 0.056119, -0.086125, -0.10691, -0.078209, -0.060857, 0.079011, 0.45685, 0.6597, 0.65132, 0.55697, 0.32852, 0.182, 0.17103, 0.25266, 0.39007, 0.50685, 0.63547, 0.67436, 0.64576, 0.49397, 0.19844, 0.12388, 0.16692, -0.045152, -0.26879, -0.24356, -0.031484, 0.16027, 0.22576, 0.1693, -0.046388, -0.13585, -0.16704, -0.1071, 0.072197, 0.28684, 0.37189, 0.34414, 0.25812, 0.10715, 0.018095, 0.085678, 0.34249, -0.0021253, -0.30473, -0.40323, -0.35158, -0.23195, -0.1043, -0.071783, -0.15724, -0.20643, -0.24339, -0.29602, -0.24011, -0.14416, -0.13551, -0.11179, -0.14421, -0.18577, -0.10744, 0.039224, 0.30728, -0.24188, -0.4808, -0.63531, -0.62455, -0.58506, -0.51283, -0.4522, -0.41515, -0.45094, -0.53281, -0.56195, -0.56128, -0.59586, -0.61207, -0.60053, -0.5702, -0.54052, -0.39942, -0.14492, -0.0092764, -0.14298, -0.20247, -0.31872, -0.41413, -0.42152, -0.37205, -0.34025, -0.27797, -0.22527, -0.2738, -0.39247, -0.4845, -0.5799, -0.64611, -0.6277, -0.49233, -0.36527, -0.19639, -0.032721, 0.013388, -0.045715, -0.064116, -0.071362, -0.090752, -0.11701, -0.11109, -0.11667, -0.09561, -0.072841, -0.080318, -0.13137, -0.1979, -0.294, -0.37173, -0.35295, -0.20242, -0.10579, -0.047581, -0.018072, -0.0018833, 0, -0.0020761, -0.0034602, -0.00094986, -0.0011263, -0.00086844, -8.1417e-05, 0, -0.0034602, -0.0034602, -0.0034602, -0.0034602, -0.010394, -0.030111, -0.03163, -0.009078, -8.1417e-05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.0043287, -0.0055228, -0.0038944, -0.00043422, -0.0024425, -0.0043287, -0.0035416, -0.0034602, -0.0034602, -0.0021575, -0.00099057, -0.0077889, -0.022362, -0.028808, -0.028713, -0.0157, -0.0062691, -0.00032567, -0.00012212, 0, -0.045241, -0.052311, -0.02494, 0.057928, 0.088535, 0.079479, 0.05041, -0.034023, -0.096927, -0.090427, -0.094633, -0.1388, -0.20486, -0.24654, -0.25598, -0.092668, 0.07471, 0.24882, 0.39981, 0.31222, -0.087423, -0.045212, 0.12747, 0.17745, 0.20021, 0.21249, 0.089568, -0.13411, -0.27343, -0.28257, -0.33633, -0.31036, -0.32644, -0.3714, -0.3186, 0.0069064, 0.25734, 0.48046, 0.67043, 0.5427, -0.14416, 0.05134, 0.25188, 0.29219, 0.1983, 0.15224, 0.062033, -0.22526, -0.42217, -0.4422, -0.48754, -0.39808, -0.33904, -0.21334, 0.023689, 0.2126, 0.34579, 0.38596, 0.57771, 0.59359, -0.025548, 0.19673, 0.24534, 0.24876, 0.11729, 0.0074651, -0.1608, -0.36205, -0.51496, -0.51482, -0.48238, -0.37887, -0.0922, 0.1931, 0.368, 0.39177, 0.34499, 0.25837, 0.31776, 0.40375, 0.11015, 0.234, 0.23616, 0.1895, 0.0028, -0.22888, -0.29327, -0.42662, -0.48703, -0.46939, -0.35863, -0.14003, 0.27536, 0.50232, 0.50643, 0.41557, 0.28112, 0.22953, 0.23623, 0.26974, 0.12587, 0.20762, 0.21672, 0.00061343, -0.18078, -0.25358, -0.28196, -0.38245, -0.4807, -0.43471, -0.24175, 0.17612, 0.46176, 0.54453, 0.48819, 0.3408, 0.20897, 0.25818, 0.22238, 0.099595, 0.16988, 0.17486, 0.095851, -0.15534, -0.23501, -0.23719, -0.23519, -0.34503, -0.52408, -0.38133, -0.042961, 0.45453, 0.57087, 0.54725, 0.22673, 0.02187, 0.11416, 0.33574, 0.24423, 0.1138, 0.16189, 0.12417, 0.028617, -0.11245, -0.19734, -0.19832, -0.25149, -0.33044, -0.50967, -0.31507, 0.16886, 0.5146, 0.54554, 0.34322, -0.054405, -0.16696, 0.071936, 0.3071, 0.24802, 0.21967, 0.074191, 0.033937, 0.0012559, -0.014007, -0.087831, -0.15531, -0.22234, -0.4393, -0.5105, -0.10092, 0.25334, 0.43753, 0.44113, -0.0554, -0.26574, -0.26958, -0.13902, 0.13827, 0.14674, 0.18842, -0.1106, 0.018298, 0.051233, 0.0050272, 0.0085417, -0.16572, -0.25261, -0.35971, -0.14045, 0.10287, 0.17972, 0.28815, 0.022336, -0.29816, -0.34146, -0.42748, -0.33234, 0.074349, 0.16046, 0.23431, -0.16886, -0.0099352, 0.083995, 0.16525, 0.093403, 0.017809, -0.024724, 0.13674, 0.18221, 0.18108, 0.091941, -0.2558, -0.55795, -0.58392, -0.5986, -0.66361, -0.43675, 0.085531, 0.2848, 0.39301, -0.19847, 0.071604, 0.15319, 0.27876, 0.32636, 0.39684, 0.45801, 0.48614, 0.43547, 0.24244, -0.15884, -0.54911, -0.67511, -0.69131, -0.67977, -0.64945, -0.31591, 0.31039, 0.61464, 0.62534, -0.14082, -0.090232, 0.16918, 0.37059, 0.46462, 0.54033, 0.56414, 0.52649, 0.41584, 0.14499, -0.27672, -0.4845, -0.5799, -0.64611, -0.6277, -0.49233, -0.074806, 0.57061, 0.75781, 0.64084, -0.045715, -0.064116, -0.0052359, 0.1083, 0.32112, 0.34192, 0.35446, 0.29208, 0.11688, -0.047728, -0.12961, -0.1979, -0.294, -0.37173, -0.35295, -0.20242, 0.076363, 0.34782, 0.41641, 0.29156, 0, -0.0020761, -0.0034602, -0.00094986, -0.0011263, -0.00086844, -8.1417e-05, 0, -0.0034602, -0.0034602, -0.0034602, -0.0034602, -0.010394, -0.030111, -0.03163, -0.009078, -8.1417e-05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
@@ -36,81 +70,108 @@ int main(void)
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.0043287, -0.0055228, -0.0038944, -0.00043422, -0.0024425, -0.0043287, -0.0035416, -0.0034602, -0.0034602, -0.0021575, -0.00099057, -0.0077889, -0.022362, -0.028808, -0.028713, -0.0157, -0.0062691, -0.00032567, -0.00012212, 0, -0.045512, -0.061657, -0.039683, -0.0059376, 0.0018939, 0.0038995, -0.03544, -0.068293, -0.096814, -0.089082, -0.046678, 0.019069, 0.12332, 0.24175, 0.24936, 0.20707, 0.092003, -0.00067227, -0.047208, -0.040179, -0.0977, -0.12293, -0.01045, 0.13505, 0.28111, 0.28789, 0.15939, -0.015063, -0.21322, -0.23226, -0.0045675, 0.30398, 0.4488, 0.51601, 0.47334, 0.44005, 0.38403, 0.069857, -0.084219, -0.087685, -0.12695, -0.022958, 0.18392, 0.32888, 0.39478, 0.41564, 0.42619, 0.40276, 0.041257, -0.11436, 0.21263, 0.43641, 0.60075, 0.5609, 0.41633, 0.41131, 0.42044, 0.31128, 0.054792, -0.1049, -0.049723, 0.16513, 0.24186, 0.27778, 0.36485, 0.40476, 0.47168, 0.52315, 0.43025, 0.2603, 0.34888, 0.51306, 0.46994, 0.31174, 0.18709, 0.27198, 0.31734, 0.27086, 0.19697, -0.051941, 0.073506, 0.21936, 0.18973, 0.097043, 0.089418, 0.15135, 0.38608, 0.498, 0.51274, 0.498, 0.5421, 0.41197, 0.0050889, -0.21486, -0.26612, -0.13802, 0.15257, 0.23788, 0.19298, 0.0068239, 0.18594, 0.19891, 0.011387, -0.053477, -0.16304, -0.18695, -0.086553, 0.1492, 0.5146, 0.55599, 0.49293, 0.0065703, -0.3264, -0.35384, -0.33173, -0.23836, -0.00081959, 0.078005, 0.16792, 0.1899, 0.2229, 0.11013, -0.074419, -0.21344, -0.23501, -0.23719, -0.22958, -0.07982, 0.4441, 0.51918, 0.29978, -0.14254, -0.38843, -0.38311, -0.31607, -0.19896, -0.089792, 0.0010584, 0.16787, 0.27284, 0.18623, 0.036331, -0.15812, -0.26532, -0.22858, -0.204, -0.25595, -0.20891, 0.34161, 0.40922, 0.15162, -0.17583, -0.38271, -0.35648, -0.27536, -0.18657, -0.097244, 0.048828, 0.18043, 0.28896, 0.1114, -0.010208, -0.16655, -0.21249, -0.2725, -0.27747, -0.33268, -0.13614, 0.21826, 0.21687, 0.12523, -0.17098, -0.21757, -0.27079, -0.27602, -0.25547, -0.10896, 0.0069437, 0.10301, 0.13711, -0.14564, 0.026554, 0.051874, 0.051514, -0.14732, -0.10281, 0.063022, 0.18336, 0.13916, 0.047308, 0.15952, 0.056345, -0.057081, -0.072568, -0.19289, -0.1979, -0.074899, 0.049367, 0.11385, -0.029916, -0.3426, -0.047362, 0.066404, 0.17647, 0.22338, 0.25226, 0.32716, 0.23287, -0.0087139, -0.067974, 0.093343, 0.2496, 0.19617, 0.10717, 0.070081, 0.12641, 0.16812, 0.18021, 0.1751, -0.095704, -0.27209, -0.2095, 0.065703, 0.27279, 0.32864, 0.40143, 0.40726, 0.25956, -0.085815, -0.20798, 0.074882, 0.26973, 0.32086, 0.29637, 0.307, 0.33879, 0.36109, 0.2966, 0.075736, -0.10404, -0.14298, -0.17457, -0.11704, 0.17411, 0.33736, 0.35344, 0.26983, 0.068136, -0.16756, -0.20736, 0.015486, 0.13041, 0.22772, 0.25103, 0.32995, 0.41143, 0.42595, 0.17297, -0.069727, -0.089164, -0.045715, -0.064116, -0.063631, -0.026999, 0.014531, 0.014845, -0.025354, -0.035218, -0.072841, -0.078973, -0.090693, -0.012126, 0.12752, 0.15342, 0.16469, 0.18963, 0.088722, -0.030987, -0.051658, -0.036366, 0, -0.0020761, -0.0034602, -0.00094986, -0.0011263, -0.00086844, -8.1417e-05, 0, -0.0034602, -0.0034602, -0.0034602, -0.0034602, -0.010394, -0.030111, -0.03163, -0.009078, -8.1417e-05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.0043287, -0.0055228, -0.0038944, -0.00043422, 0.0017405, 0.029005, 0.029792, 0.029873, 0.029873, 0.018627, -0.00099057, -0.0077889, -0.022362, -0.028808, -0.028713, -0.012955, -0.0031318, 0.0028116, 0.0010543, 0, -0.045512, -0.05951, -0.044146, 0.040281, 0.23855, 0.33036, 0.39956, 0.34136, 0.26765, 0.11611, -0.056594, -0.13501, -0.20486, -0.24301, -0.27151, -0.12772, -0.038791, -0.024837, -0.043211, -0.039787, -0.096393, -0.081151, 0.030633, 0.32829, 0.40703, 0.50183, 0.58639, 0.66518, 0.64732, 0.48684, 0.18027, -0.1467, -0.32644, -0.38164, -0.40317, -0.024079, 0.065656, 0.13337, 0.0058091, 0.015788, -0.1163, -0.0097736, 0.20969, 0.34873, 0.40757, 0.40154, 0.42785, 0.4871, 0.57526, 0.5544, 0.4624, 0.16164, -0.2873, -0.39953, -0.4621, -0.027584, 0.12227, 0.23059, 0.16986, 0.10688, -0.11049, 0.17176, 0.24534, 0.30833, 0.25214, 0.12487, 0.12151, 0.15983, 0.25759, 0.4023, 0.51762, 0.57149, 0.095689, -0.35745, -0.39151, -0.097709, 0.017568, 0.10077, 0.21253, 0.17263, 0.069846, 0.24858, 0.22034, 0.061674, -0.11428, -0.18355, -0.21631, -0.29117, -0.25017, 0.029299, 0.57468, 0.71079, 0.44621, -0.23014, -0.34508, -0.23754, -0.0676, 0.060759, 0.17244, 0.23032, 0.17367, 0.19329, 0.05542, -0.12119, -0.19372, -0.22659, -0.25281, -0.3533, -0.44161, -0.27066, 0.40899, 0.69284, 0.49591, -0.17898, -0.34237, -0.26195, -0.13141, 0.1197, 0.18225, 0.23746, 0.23067, 0.1119, -0.090329, -0.26825, -0.23501, -0.23719, -0.23519, -0.34503, -0.52408, -0.36603, 0.18802, 0.62599, 0.54007, -0.11631, -0.31607, -0.19699, -0.069007, 0.21439, 0.24614, 0.15435, 0.16638, 0.093194, -0.16434, -0.28315, -0.22688, -0.204, -0.26245, -0.41171, -0.62299, -0.49367, 0.10191, 0.54868, 0.39152, -0.1934, -0.23981, -0.071664, 0.0627, 0.26679, 0.20655, 0.099174, -0.15358, 0.024918, 0.016099, -0.14254, -0.22884, -0.24976, -0.33929, -0.56124, -0.69509, -0.57555, 0.067841, 0.4323, 0.14229, -0.13118, -0.081506, -0.026447, 0.14499, 0.17378, 0.033769, -0.08814, -0.30705, 0.018879, 0.077197, 0.16091, -0.052964, -0.18007, -0.32542, -0.53901, -0.51567, -0.23002, 0.13912, 0.31711, 0.0070462, -0.0083475, 0.087166, 0.19043, 0.2043, 0.028097, -0.076927, -0.29247, -0.37959, -0.15362, 0.080858, 0.17249, 0.19554, 0.18662, 0.16402, 0.075824, 0.084302, 0.17584, 0.18444, 0.19624, 0.15679, 0.23909, 0.3512, 0.25809, 0.1335, -0.047127, -0.33181, -0.35326, -0.26597, -0.32502, -0.062401, 0.23621, 0.3323, 0.40792, 0.4679, 0.50326, 0.46981, 0.41432, 0.3588, 0.35582, 0.29823, 0.2568, 0.21474, 0.20715, 0.12318, -0.23892, -0.33853, -0.15066, -0.14298, -0.18587, -0.17427, 0.001299, 0.23377, 0.44259, 0.54158, 0.65654, 0.74271, 0.70123, 0.56439, 0.43472, 0.30101, 0.12291, 0.056357, -0.0068363, -0.16262, -0.27483, -0.13617, -0.09006, -0.045715, -0.064116, -0.069139, -0.069315, -0.052173, 0.064463, 0.21287, 0.25838, 0.40925, 0.48635, 0.41661, 0.2506, 0.041168, -0.1818, -0.24537, -0.14974, -0.099513, -0.069082, -0.052554, -0.036366, 0, -0.0020761, -0.0034602, -0.00094986, -0.0011263, -0.00086844, -8.1417e-05, 0, 0.029873, 0.029873, 0.029873, 0.029873, -0.010394, -0.030111, -0.03163, -0.009078, -8.1417e-05, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
     };
-
-
-    // load mean image
-    string meanFilepath = "../mean.png";
-    Mat trainMean = imread(meanFilepath, CV_LOAD_IMAGE_ANYDEPTH);
-    if (!trainMean.data) {
-        cout << "Could not open " << meanFilepath << endl;
-        return -1;
-    }
-    assert(trainMean.type() == CV_16U);
-    trainMean.convertTo(trainMean, CV_32F, 1.0 / 65535);
-
-
     // load templates
-    vector<Mat> templates(9);
     for (int i = 0; i < 9; i++) {
         Mat t = Mat(NUMRECT_DIM, NUMRECT_DIM, CV_32F, T[i]);
         transpose(t, templates[i]);
     }
 
+    // cuz we can't use to_string
+    vector<string> numToString(9);
+    numToString[0] = "1";
+    numToString[1] = "2";
+    numToString[2] = "3";
+    numToString[3] = "4";
+    numToString[4] = "5";
+    numToString[5] = "6";
+    numToString[6] = "7";
+    numToString[7] = "8";
+    numToString[8] = "9";
 
-    Mat im;
-    string filename = "sudoku2.jpg";
+
+    // precomputed bottom-left corner offsets for number overlays
+    vector<Point2i> textBlOffsets(9);
+    for (int i = 0; i < 9; i++) {
+        int baseline;
+        Size textSize = getTextSize(numToString[i], FONT_FACE, FONT_SCALE, FONT_THICKNESS, &baseline);
+        textBlOffsets[i] = Point2i(-textSize.width / 2, textSize.height / 2);
+    }
+    
+    // =====================================================================================================================================
+
+
+#if TESTING == 1
+    string filename = "blank.jpg";
     string filepath = "../" + filename;
     im = imread(filepath, CV_LOAD_IMAGE_COLOR);
-
     if (!im.data) {
         cout << "Could not open " << filepath << endl;
         return -1;
     }
-    namedWindow("original image", WINDOW_AUTOSIZE);
-    imshow("original image", im);
+    cvtColor(im, im, CV_BGR2RGBA); // matches what we expect the param to be
+    //namedWindow("original image", WINDOW_AUTOSIZE);
+    //imshow("original image", im);
+#endif
+    
+
+    cvtColor(im, im, CV_RGBA2BGR);
+
 
     const int IM_ROWS = im.rows;
     const int IM_COLS = im.cols;
-    const double IM_SQRT_RES = sqrt(IM_ROWS * IM_COLS);
+    const double IM_SQRT_RES = sqrtf(IM_ROWS * IM_COLS);
 
-    int64 A, B, C, D;
-    const double TICK_FREQ_MS = getTickFrequency()*0.001f;
 
-    C = getTickCount();
+    //int64 A, B, C, D;
+    //const double TICK_FREQ_MS = getTickFrequency()*0.001f;
+
+    //C = getTickCount();
 
     // binarize image with adaptive thresholding
 
-    A = getTickCount();
+    //A = getTickCount();
     
     Mat im_gray;
-    cvtColor(im, im_gray, CV_RGB2GRAY);
+    cvtColor(im, im_gray, CV_BGR2GRAY);
     // mean of nxn neighborhood of pixel minus offset is used as threshold
     Mat im_bin;
     {
         int blockSize = (int)((1.0 / 16.0) * 0.5 * IM_SQRT_RES) * 2 + 1;
-        cout << "adaptive thresholding blocksize " << blockSize << endl;
+        //cout << "adaptive thresholding blocksize " << blockSize << endl;
         int meanOffset = 12;
         adaptiveThreshold(im_gray, im_bin, 255, ADAPTIVE_THRESH_MEAN_C,
             THRESH_BINARY_INV, blockSize, meanOffset);
     }
-    B = getTickCount();
-    cout << "binarize: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "binarize: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
 
+
+
+
+    // scale image to some fixed height for faster processing
+    const int IM_SCALED_ROWS = 600;
+    const double IM_SCALE = (double)IM_SCALED_ROWS / IM_ROWS;
+    const int IM_SCALED_COLS = round(IM_SCALE * IM_COLS);
+
+    resize(im_bin, im_bin, Size(IM_SCALED_COLS, IM_SCALED_ROWS), 0.0, 0.0, INTER_AREA);
+    threshold(im_bin, im_bin, 127, 255, CV_THRESH_BINARY);  // keep it binary
+
+#if TESTING
     namedWindow("thesholded image", WINDOW_AUTOSIZE);
     imshow("thesholded image", im_bin);
-
+#endif
 
 
     // remove everything except the largest blob, assumed to be the sudoku grid
-    A = getTickCount();
+    //A = getTickCount();
     Mat im_binblob;
     im_bin.copyTo(im_binblob);
     {
         int maxArea = 0;
         Point maxAreaPoint;
-        for (int y = 0; y < IM_ROWS; y++) {
+        for (int y = 0; y < IM_SCALED_ROWS; y++) {
             uchar *row = im_binblob.ptr(y);
-            for (int x = 0; x < IM_COLS; x++) {
+            for (int x = 0; x < IM_SCALED_COLS; x++) {
                 if (row[x] > 128) {
                     int area = floodFill(im_binblob, Point(x, y), Scalar(128));
                     if (area > maxArea) {
@@ -120,45 +181,34 @@ int main(void)
                 }
             }
         }
+        if (maxArea == 0) {
+#if TESTING == 0
+            im_output = im_orig;
+            return;
+#else
+            waitKey();
+            return 0;
+#endif
+        }
         floodFill(im_binblob, maxAreaPoint, Scalar(255));
         threshold(im_binblob, im_binblob, 254, 255, CV_THRESH_BINARY);
     }
-    /*{
-        vector<vector<Point>> contours;
-        findContours(im_binblob, contours, CV_RETR_LIST, CV_CHAIN_APPROX_NONE);
-        
-        // find largest blob
-        int maxArea = 0;
-        int maxIndex = -1;
-        for (int i = 0; i < contours.size(); i++) {
-            int area = contours[i].size();
-            if (area > maxArea) {
-                maxArea = area;
-                maxIndex = i;
-            }
-        }
-
-        im_binblob = Mat::zeros(im_binblob.size(), im_binblob.type());
-        drawContours(im_binblob, contours, maxIndex, Scalar(255));
-    }*/
-    B = getTickCount();
-    cout << "find max blob: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-
-    //namedWindow("max blob", WINDOW_AUTOSIZE);
-    //imshow("max blob", im_binblob);
-
-
+    //B = getTickCount();
+    //cout << "find max blob: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+#if TESTING
+    namedWindow("max blob", WINDOW_AUTOSIZE);
+    imshow("max blob", im_binblob);
+#endif
     
-    
-    // find the contour of the grid
-    A = getTickCount();
-    Mat im_edge = Mat::zeros(IM_ROWS, IM_COLS, CV_8U);
-    for (int y = 1; y < IM_ROWS - 1; y++) {
+    /*// find the contour of the grid
+    //A = getTickCount();
+    Mat im_edge = Mat::zeros(IM_SCALED_ROWS, IM_SCALED_COLS, CV_8U);
+    for (int y = 1; y < IM_SCALED_ROWS - 1; y++) {
         uchar* row_above = im_binblob.ptr(y - 1);
         uchar* row = im_binblob.ptr(y);
         uchar* row_below = im_binblob.ptr(y + 1);
         uchar* edge_row = im_edge.ptr(y);
-        for (int x = 1; x < IM_COLS - 1; x++) {
+        for (int x = 1; x < IM_SCALED_COLS - 1; x++) {
             uchar center = row[x];
             if (!center) {
                 edge_row[x] = 0;
@@ -175,15 +225,15 @@ int main(void)
             }
         }
     }
-
-    B = getTickCount();
-    cout << "manual contour: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "manual contour: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
 
     //namedWindow("manual contour", CV_WINDOW_AUTOSIZE);
     //imshow("manual contour", im_edge);
+    */
 
     // find the four corners of the grid
-    A = getTickCount();
+    //A = getTickCount();
     vector<Point2f> corners(4);
     {
         // corners are, in order:
@@ -191,12 +241,12 @@ int main(void)
         // max projection onto <1,-1> (top right)   maxDiff
         // max projection onto <1,1> (bottom right) maxSum
         // min projection onto <1,-1> (bottom left) minDiff
-        int largeEnough = IM_COLS + IM_ROWS;
+        int largeEnough = IM_SCALED_COLS + IM_SCALED_ROWS;
         int maxSum = -largeEnough, minSum = largeEnough;
         int maxDiff = -largeEnough, minDiff = largeEnough;
-        for (int y = 0; y < IM_ROWS; y++) {
-            uchar *row = im_edge.ptr(y);
-            for (int x = 0; x < IM_COLS; x++) {
+        for (int y = 0; y < IM_SCALED_ROWS; y++) {
+            uchar *row = im_binblob.ptr(y);
+            for (int x = 0; x < IM_SCALED_COLS; x++) {
                 if (row[x]) {
                     int sum = x + y;    // projection onto <1,1>
                     int diff = x - y;   // projection onto <1,-1>
@@ -219,25 +269,37 @@ int main(void)
                 }
             }
         }
+        // make sure the 4 corners are distinct
+        if (corners[0] == corners[1] || corners[0] == corners[2]
+            || corners[0] == corners[3] || corners[1] == corners[2]
+            || corners[1] == corners[3] || corners[2] == corners[3]) {
+#if TESTING == 0
+            im_output = im_orig;
+            return;
+#else
+            waitKey();
+            return 0;
+#endif
+        }
     }
-    B = getTickCount();
-    cout << "find 4 corners: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "find 4 corners: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
     
     
-    // draw corners
+    /*// draw corners
     Mat im_corners;
     im.copyTo(im_corners);
     for (int i = 0; i < 4; i++) {
         circle(im_corners, corners[i], 5, Scalar(255,0,0), 2, 8, 0);
     }
-    //namedWindow("4 corners", CV_WINDOW_AUTOSIZE);
-    //imshow("4 corners", im_corners);
-
+    namedWindow("4 corners", CV_WINDOW_AUTOSIZE);
+    imshow("4 corners", im_corners);
+    */
 
 
 
     // find homography and straighten grid
-    A = getTickCount();
+    //A = getTickCount();
     const int CELL_DIM = 51;    // make this odd
     const int GRID_DIM = 9 * CELL_DIM;
     const int GRID_PAD = 30;
@@ -254,11 +316,12 @@ int main(void)
         warpPerspective(im_bin, im_grid, gridHomography, Size(GRID_DIM_PAD, GRID_DIM_PAD),
             INTER_NEAREST, BORDER_CONSTANT, Scalar(0));
     }
-    B = getTickCount();
-    cout << "homography transform: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
-    
+    //B = getTickCount();
+    //cout << "homography transform: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+#if TESTING
     namedWindow("grid", CV_WINDOW_AUTOSIZE);
     imshow("grid", im_grid); 
+#endif
 
 
     // find best center of each grid cell with two-bar template matching
@@ -266,13 +329,13 @@ int main(void)
     vector<Point2i> cellCenters(81);
     Mat im_grid_thick;
 
-    A = getTickCount();
+    //A = getTickCount();
     {
         // dilate image for thicker lines
         {
             int SE_radius = 1;
             int SE_size = SE_radius * 2 + 1;
-            cout << "dilate SE size " << SE_size << endl;
+            //cout << "dilate SE size " << SE_size << endl;
             Mat dilate_SE = Mat::zeros(SE_size, SE_size, CV_8U);
             for (int y = 0; y < SE_size; y++)
                 dilate_SE.ptr(y)[SE_radius] = 1;
@@ -357,15 +420,15 @@ int main(void)
                 Point2i LRTB_best2 = twoRectsMatch(im_grid_integral,
                     hor_r1_min, hor_r1_max, hor_r2_min, hor_r2_max,
                     hor_s1_min, hor_s1_max, hor_s2_min, hor_s2_max,
-                    Point2i(LRTB_best.x, LRTB_best.y - SEARCH_RADIUS),
-                    Point2i(LRTB_best.x + 1, LRTB_best.y + SEARCH_RADIUS + 1)
+                    Point2i(LRTB_best.x, ideal_center_y - SEARCH_RADIUS),
+                    Point2i(LRTB_best.x + 1, ideal_center_y + SEARCH_RADIUS + 1)
                     );
                 cellCenters[9 * i + j] = LRTB_best2;
             }
         }
     }
-    B = getTickCount();
-    cout << "cell centers: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "cell centers: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
 
 
     // draw centers
@@ -374,18 +437,17 @@ int main(void)
     for (int i = 0; i < cellCenters.size(); i++) {
         circle(im_cell_centers, cellCenters[i], 3, Scalar(0, 255, 0), 2, 8, 0);
     }
+#if TESTING
     namedWindow("cell centers", CV_WINDOW_AUTOSIZE);
     imshow("cell centers", im_cell_centers);
-
-
-
+#endif
 
     // extract numbers from grid
     vector<Mat> numbers(cellCenters.size());
     Mat testMean = Mat::zeros(Size(NUMRECT_DIM, NUMRECT_DIM), CV_32F);
     int numNumbers = 0;
 
-    A = getTickCount();
+    //A = getTickCount();
     {
         const int CELLRECT_HALF_DIM = 20;
         const int CELLRECT_DIM = 2 * CELLRECT_HALF_DIM + 1;
@@ -394,13 +456,19 @@ int main(void)
         Point2i cellRectMin(-CELLRECT_HALF_DIM, -CELLRECT_HALF_DIM);
         Point2i cellRectMax(CELLRECT_HALF_DIM + 1, CELLRECT_HALF_DIM + 1);
         Rect cellRect(cellRectMin, cellRectMax);
+
+        const int CELL_MIN_WHITE_PIX = round(CELLRECT_PIXELS / 16);
+        const int CELL_MAX_WHITE_PIX = round(CELLRECT_PIXELS * 0.55);
+
         for (int i = 0; i < cellCenters.size(); i++) {
 
             // crop out a square around the cell center to get the number
             Mat im_num = im_grid(cellRect + cellCenters[i]);
 
-            // if square has too few white pixels, it's assumed blank
-            if (countNonZero(im_num) < CELLRECT_PIXELS / 16) {
+            // if square has too few or too many white pixels, it's assumed blank
+            int whitePix = countNonZero(im_num);
+            if (whitePix < CELL_MIN_WHITE_PIX ||
+                whitePix > CELL_MAX_WHITE_PIX) {
                 continue;
             }
 
@@ -431,6 +499,9 @@ int main(void)
             Mat numCroppedScaled;
             double scale = (double)NUMRECT_DIM / blobRect.height;
             int width = round(blobRect.width * scale * 0.5) * 2;
+            if (width == 0) {
+                continue;
+            }
             resize(im_num(blobRect), numCroppedScaled, Size(width, NUMRECT_DIM),
                 0.0, 0.0, INTER_LINEAR);
 
@@ -451,9 +522,9 @@ int main(void)
 
 
             // FOR TESTING
-            stringstream ss;
-            ss << "../out/" << filename << "_" << (i / 9) << "_" << (i % 9) << ".png";
-            imwrite(ss.str(), numCroppedScaled);
+            //stringstream ss;
+            //ss << "../out/" << filename << "_" << (i / 9) << "_" << (i % 9) << ".png";
+            //imwrite(ss.str(), numCroppedScaled);
 
 
             // convert to float image, accumulate sum
@@ -465,19 +536,27 @@ int main(void)
         }
 
     }
+    if (numNumbers < 17) {   // sudokus need at least 17 values to have a unique solution
+#if TESTING == 0
+        im_output = im_orig;
+        return;
+#else
+        waitKey();
+        return 0;
+#endif
+    }
     testMean /= numNumbers;
 
-    B = getTickCount();
-    cout << "digit cropping: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "digit cropping: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
     
     //namedWindow("cell", CV_WINDOW_AUTOSIZE);
     //imshow("cell", numbers_bin[36]);
 
 
-
     // match extracted numbers to templates
     int values[9][9];
-    A = getTickCount();
+    //A = getTickCount();
     {
         for (int i = 0; i < numbers.size(); i++) {
             Mat& number = numbers[i];
@@ -506,11 +585,11 @@ int main(void)
             values[i / 9][i % 9] = minIndex + 1;
         }
     }
-    B = getTickCount();
-    cout << "digit matching: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+    //B = getTickCount();
+    //cout << "digit matching: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
 
     // print out recognized digit values
-    printf("\n");
+    /*printf("\n");
     for (int i = 0; i < 9; i++) {
         for (int j = 0; j < 9; j++) {
             if (values[i][j])
@@ -520,9 +599,8 @@ int main(void)
         }
         printf("\n");
     }
-
+    */
     
-
 
     // solve sudoku
 
@@ -540,23 +618,14 @@ int main(void)
 
 
 
-    const int fontFace = FONT_HERSHEY_SIMPLEX;
-    const double fontScale = 1.2;
-    const int thickness = 2;
-
-    // precompute text sizes
-    vector<Point2i> blOffsets(9);
-    for (int i = 0; i < 9; i++) {
-        int baseline;
-        Size textSize = getTextSize(to_string(i+1), fontFace, fontScale, thickness, &baseline);
-        blOffsets[i] = Point2i(-textSize.width / 2, textSize.height / 2);
-    }
+#if 1
 
 
-    // write solved values onto a grayscale mask at grid cell centers;
-    // transform it back to the original image's perspective
-    Mat im_mask;
+    // compute output image with original and solved values overlaid
+
+    //A = getTickCount();
     {
+        // write solved values onto a grayscale mask at grid cell centers;
         Mat im_gridMask = Mat::zeros(Size(GRID_DIM_PAD, GRID_DIM_PAD), CV_32FC2);
         for (int i = 0; i < 9; i++) {
             for (int j = 0; j < 9; j++) {
@@ -567,22 +636,24 @@ int main(void)
                 Point2i& cellCenter = cellCenters[9 * i + j];
 
                 int value = solvedValues[i][j];
-                string text = to_string(value);
-                Point2i bl = cellCenter + blOffsets[value - 1];
+                string text = numToString[value - 1];
+                Point2i bl = cellCenter + textBlOffsets[value - 1];
                 Scalar color = values[i][j] ? Scalar(1.0, 0.0) : Scalar(0.0, 1.0);
-                putText(im_gridMask, text, bl, fontFace, fontScale, color, thickness, CV_AA);
+                putText(im_gridMask, text, bl, FONT_FACE, FONT_SCALE, color, FONT_THICKNESS, CV_AA);
             }
         }
-        warpPerspective(im_gridMask, im_mask, gridHomography, Size(IM_COLS, IM_ROWS),
+        // transform it back to the original unscaled image's perspective
+        Mat im_mask;
+        Mat scaledHomography = gridHomography;
+        scaledHomography.col(0) *= IM_SCALE;
+        scaledHomography.col(1) *= IM_SCALE;
+        warpPerspective(im_gridMask, im_mask, scaledHomography, Size(IM_COLS, IM_ROWS),
             INTER_LINEAR | WARP_INVERSE_MAP, BORDER_CONSTANT, Scalar(0.0, 0.0));
-    }
 
-    assert(im_mask.type() == CV_32FC2);
-    assert(im.type() == CV_8UC3);
+        assert(im_mask.type() == CV_32FC2);
+        assert(im.type() == CV_8UC3);
 
-    // combine original image and some solid color using the mask values as alpha values
-    Mat im_output;
-    {
+        // combine original image and some solid color using the mask values as alpha values
         Vec3b valuesColor(255, 0, 0);
         Vec3b solvedValuesColor(0, 255, 0);
         im_output = Mat::zeros(Size(IM_COLS, IM_ROWS), CV_8UC3);
@@ -603,22 +674,29 @@ int main(void)
         }
     }
 
+    cvtColor(im_output, im_output, CV_BGR2RGBA);
+
+
+    //B = getTickCount();
+    //cout << "values overlay: " << ((B - A) / TICK_FREQ_MS) << " ms" << endl;
+
+    //D = getTickCount();
+    //cout << endl << "TOTAL: " << ((D - C) / TICK_FREQ_MS) << " ms" << endl;
+#endif
+
+#if TESTING
+    cvtColor(im_output, im_output, CV_RGBA2BGR);
     namedWindow("output", CV_WINDOW_AUTOSIZE);
     imshow("output", im_output);
-
-
-
-
-
-
-    D = getTickCount();
-    cout << endl << "TOTAL: " << ((D - C) / TICK_FREQ_MS) << " ms" << endl;
-
     waitKey();
+#endif
 
+#if TESTING
     return 0;
-}
-//}
+#endif
+
+}// end function
+}// end extern C
 
 
 
