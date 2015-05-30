@@ -15,6 +15,147 @@ using namespace std;
 using namespace cv;
 
 
+
+// #####################################################################################################
+
+// Sudoku solver code taken from:
+// http://www.sanfoundry.com/cpp-program-solve-sudoku-problem-backtracking/
+
+
+#define UNASSIGNED 0
+#define N 9
+
+bool FindUnassignedLocation(int grid[N][N], int &row, int &col);
+bool isSafe(int grid[N][N], int row, int col, int num);
+
+/* assign values to all unassigned locations for Sudoku solution
+*/
+bool SolveSudoku(int grid[N][N])
+{
+    // sanity check
+    {
+        char valueExists[9];
+
+        // check rows
+        for (int i = 0; i < 9; i++) {
+            memset(valueExists, 0, 9 * sizeof(char));
+            for (int j = 0; j < 9; j++) {
+                int value = grid[i][j];
+                if (!value) continue;
+                char* exist = &valueExists[value - 1];
+                if (*exist) {
+                    return false;
+                }
+                *exist = 1;
+            }
+        }
+        // check cols
+        for (int j = 0; j < 9; j++) {
+            memset(valueExists, 0, 9 * sizeof(char));
+            for (int i = 0; i < 9; i++) {
+                int value = grid[i][j];
+                if (!value) continue;
+                char* exist = &valueExists[value - 1];
+                if (*exist) {
+                    return false;
+                }
+                *exist = 1;
+            }
+        }
+        // check blocks
+        for (int a = 0; a < 3; a++) {
+            for (int b = 0; b < 3; b++) {
+                memset(valueExists, 0, 9 * sizeof(char));
+                for (int i = 3 * a; i < 3 * (a + 1); i++) {
+                    for (int j = 3 * b; j < 3 * (b + 1); j++) {
+                        int value = grid[i][j];
+                        if (!value) continue;
+                        char* exist = &valueExists[value - 1];
+                        if (*exist) {
+                            return false;
+                        }
+                        *exist = 1;
+                    }
+                }
+            }
+        }
+    }
+
+    int row, col;
+    if (!FindUnassignedLocation(grid, row, col))
+        return true;
+    for (int num = 1; num <= 9; num++)
+    {
+        if (isSafe(grid, row, col, num))
+        {
+            grid[row][col] = num;
+            if (SolveSudoku(grid))
+                return true;
+            grid[row][col] = UNASSIGNED;
+        }
+    }
+    return false;
+}
+
+/* Searches the grid to find an entry that is still unassigned. */
+bool FindUnassignedLocation(int grid[N][N], int &row, int &col)
+{
+    for (row = 0; row < N; row++)
+        for (col = 0; col < N; col++)
+            if (grid[row][col] == UNASSIGNED)
+                return true;
+    return false;
+}
+
+/* Returns whether any assigned entry n the specified row matches
+the given number. */
+bool UsedInRow(int grid[N][N], int row, int num)
+{
+    for (int col = 0; col < N; col++)
+        if (grid[row][col] == num)
+            return true;
+    return false;
+}
+
+/* Returns whether any assigned entry in the specified column matches
+the given number. */
+bool UsedInCol(int grid[N][N], int col, int num)
+{
+    for (int row = 0; row < N; row++)
+        if (grid[row][col] == num)
+            return true;
+    return false;
+}
+
+/* Returns whether any assigned entry within the specified 3x3 box matches
+the given number. */
+bool UsedInBox(int grid[N][N], int boxStartRow, int boxStartCol, int num)
+{
+    for (int row = 0; row < 3; row++)
+        for (int col = 0; col < 3; col++)
+            if (grid[row + boxStartRow][col + boxStartCol] == num)
+                return true;
+    return false;
+}
+
+/* Returns whether it will be legal to assign num to the given row,col location.
+*/
+bool isSafe(int grid[N][N], int row, int col, int num)
+{
+    return !UsedInRow(grid, row, num) && !UsedInCol(grid, col, num) &&
+        !UsedInBox(grid, row - row % 3, col - col % 3, num);
+}
+
+// #####################################################################################################
+
+
+
+
+
+
+
+
+
 Point2i twoRectsMatch(const Mat& integral,
     const Point2i& r1_min, const Point2i& r1_max,
     const Point2i& r2_min, const Point2i& r2_max,
@@ -154,7 +295,7 @@ int main(void)
 
 
 #if TESTING == 1
-    string filename = "sudoku2.jpg";
+    string filename = "sudoku3.jpg";
     string filepath = "../" + filename;
     im = imread(filepath, CV_LOAD_IMAGE_COLOR);
     if (!im.data) {
@@ -654,21 +795,27 @@ int main(void)
     }
     */
     
+    // sanity check...
+    // check rows
+
 
     // solve sudoku
-
     int solvedValues[9][9];
-
-    // TEMP FILLER
     for (int i = 0; i < 9; i++) {
         for (int j = 0; j < 9; j++) {
-            if (values[i][j])
-                solvedValues[i][j] = values[i][j];
-            else
-                solvedValues[i][j] = round(1.0 + 8.0*rand() / (double)RAND_MAX);
+            solvedValues[i][j] = values[i][j];
         }
     }
 
+    if (!SolveSudoku(solvedValues)) {
+#if TESTING == 0
+        im_output = im_orig;
+        return;
+#else
+        waitKey();
+        return 0;
+#endif
+    }
 
 
 #if 1
@@ -812,5 +959,4 @@ Point2i twoRectsMatch(const Mat& integral,
     }
     return maxMatchesSum * (1.0 / numMaxMatches);
 }
-
 
