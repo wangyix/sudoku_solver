@@ -84,7 +84,7 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
         mItemPreviewGray = menu.add("GRAY");
         mItemPreviewCanny = menu.add("Canny");
         mItemPreviewThresh = menu.add("Thresh.");
-        mItemPreviewFeatures = menu.add("Features");
+        mItemPreviewFeatures = menu.add("Sudoku");
         return true;
     }
 
@@ -142,15 +142,27 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
             // input frame has gray scale format
             mRgba = inputFrame.rgba();
             int maxValue = 255;
-            int blockSize = 61;
-            int meanOffset = 20;
+            int blockSize = 51;
+            int meanOffset = 7;
             Imgproc.adaptiveThreshold(inputFrame.gray(), mIntermediateMat, maxValue, Imgproc.ADAPTIVE_THRESH_MEAN_C, Imgproc.THRESH_BINARY_INV, blockSize, meanOffset);
+            Imgproc.erode(mIntermediateMat, mIntermediateMat, Mat.ones(3, 3, 0));
+            Imgproc.dilate(mIntermediateMat, mIntermediateMat, Mat.ones(3, 3, 0));
             Imgproc.cvtColor(mIntermediateMat, mRgba, Imgproc.COLOR_GRAY2RGBA, 4);
             break;
         case VIEW_MODE_FEATURES:
+        	int ROWS = mRgba.rows();
+        	int COLS = mRgba.cols();
             // input frame has RGBA format
             mRgba = inputFrame.rgba();
             FindFeatures(mRgba.getNativeObjAddr(), mRgba.getNativeObjAddr());
+            
+            // pad returned image to size of original
+    		int widthPad = COLS - mRgba.cols();
+    		int heightPad = ROWS - mRgba.rows();
+    		Imgproc.copyMakeBorder(mRgba, mRgba, heightPad / 2, heightPad - (heightPad / 2),
+    				widthPad / 2, widthPad - (widthPad / 2),
+    				Imgproc.BORDER_CONSTANT);
+            
             break;
         }
 
