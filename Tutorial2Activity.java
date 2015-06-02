@@ -150,19 +150,39 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
             Imgproc.cvtColor(mIntermediateMat, mRgba, Imgproc.COLOR_GRAY2RGBA, 4);
             break;
         case VIEW_MODE_FEATURES:
-        	int ROWS = mRgba.rows();
-        	int COLS = mRgba.cols();
             // input frame has RGBA format
             mRgba = inputFrame.rgba();
+            
+        	int ROWS = mRgba.rows();
+        	int COLS = mRgba.cols();
+            
+            
+            // convert to BGR format
+            Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_RGBA2BGR);
+            
+            // crop image to square
+            /*int widthCrop = 0;
+            int heightCrop = 0;
+            if (ROWS < COLS) {
+                widthCrop = COLS - ROWS;
+                mRgba = mRgba.colRange(widthCrop/2, widthCrop/2 + ROWS);
+            } else if (ROWS > COLS) {
+            	heightCrop = ROWS - COLS;
+                mRgba = mRgba.rowRange(heightCrop/2, heightCrop/2 + COLS);
+            }*/
+            
+            // expected to not change size of image
             FindFeatures(mRgba.getNativeObjAddr(), mRgba.getNativeObjAddr());
             
-            // pad returned image to size of original
-    		int widthPad = COLS - mRgba.cols();
-    		int heightPad = ROWS - mRgba.rows();
-    		Imgproc.copyMakeBorder(mRgba, mRgba, heightPad / 2, heightPad - (heightPad / 2),
-    				widthPad / 2, widthPad - (widthPad / 2),
-    				Imgproc.BORDER_CONSTANT);
             
+            /*// pad returned image to size of original
+    		Imgproc.copyMakeBorder(mRgba, mRgba, heightCrop / 2, heightCrop - (heightCrop / 2),
+    				widthCrop / 2, widthCrop - (widthCrop / 2),
+    				Imgproc.BORDER_CONSTANT);
+            */
+    		// convert back to RGBA format
+    		Imgproc.cvtColor(mRgba, mRgba, Imgproc.COLOR_RGBA2BGR);
+    		
             break;
         }
 
