@@ -24,9 +24,9 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
     private static final int       VIEW_MODE_GRAY     = 1;
     private static final int       VIEW_MODE_CANNY    = 2;
     private static final int       VIEW_MODE_THRESH   = 3;
-    private static final int       VIEW_MODE_FEATURES = 5;
+    private static final int       VIEW_MODE_SUDOKU = 5;
 
-    private int                    mViewMode;
+    private int                    mViewMode = VIEW_MODE_SUDOKU;
     private Mat                    mRgba;
     private Mat                    mIntermediateMat;
     private Mat                    mGray;
@@ -149,7 +149,7 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
             Imgproc.dilate(mIntermediateMat, mIntermediateMat, Mat.ones(3, 3, 0));
             Imgproc.cvtColor(mIntermediateMat, mRgba, Imgproc.COLOR_GRAY2RGBA, 4);
             break;
-        case VIEW_MODE_FEATURES:
+        case VIEW_MODE_SUDOKU:
             // input frame has RGBA format
             mRgba = inputFrame.rgba();
             
@@ -201,7 +201,7 @@ public class Tutorial2Activity extends Activity implements CvCameraViewListener2
         } else if (item == mItemPreviewThresh) {
             mViewMode = VIEW_MODE_THRESH;
         } else if (item == mItemPreviewFeatures) {
-            mViewMode = VIEW_MODE_FEATURES;
+            mViewMode = VIEW_MODE_SUDOKU;
         }
 
         return true;
